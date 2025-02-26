@@ -8,6 +8,27 @@ services:
     image: swaggerapi/swagger-ui
     ports:
       - "8080:8080"
+    networks:
+      - pgl-cqrs-net
+
+  writer:
+    build: 
+      context: .
+      dockerfile: ./writer/dockerfile
+    ports:
+      - "8081:8080"
+    networks:
+      - pgl-cqrs-net
+  
+  readerr:
+    build:
+      context: .
+      dockerfile: ./reader/dockerfile
+    ports:
+      - "8082:8080"
+    networks:
+      - pgl-cqrs-net
+  
   write-db:
     image: postgres:latest
     environment:
@@ -21,9 +42,9 @@ services:
           "CMD",
           "pg_isready",
           "-d",
-          "${PG_DATABASE:-admin}",
+          "${PG_DATABASE:-testdb}",
           "-U",
-          "${PG_USER:-12345}"
+          "${PG_USER:-admin}"
         ]
       interval: 30s
       timeout: 30s
@@ -32,47 +53,50 @@ services:
       - "5432:5432"
     networks:
       - pgl-cqrs-net
-    command: |
-      postgres 
-      -c wal_level=replica 
-      -c hot_standby=on 
-      -c max_wal_senders=10 
-      -c max_replication_slots=10 
-      -c hot_standby_feedback=on
-  # read-db: # Commented for now till replication is fixed
-  #   image: postgres:latest
-  #   environment:
-  #     POSTGRES_DB: testdb
-  #     POSTGRES_USER: ${PG_USER:-admin}
-  #     POSTGRES_PASSWORD: ${PG_PASSWORD:-12345}
-  #     POSTGRES_HOST_AUTH_METHOD: trust # For simplicity, change this in real projects!
-  #   healthcheck:
-  #     test:
-  #       [
-  #         "CMD",
-  #         "pg_isready",
-  #         "-d",
-  #         "${PG_DATABASE:-admin}",
-  #         "-U",
-  #         "${PG_USER:-12345}"
-  #       ]
-  #     interval: 30s
-  #     timeout: 30s
-  #     retries: 3
-  #   depends_on:
-  #     - write-db
-  #   ports:
-  #     - "5433:5432"
-  #   networks:
-  #     - pgl-cqrs-net
-  #   command: |
-  #     bash -c "
-  #     until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot --host=write-db --port=5432
-  #     do
-  #     echo 'Waiting for primary to connect...'
-  #     sleep 1s
-  #     done
-  #     echo 'Backup done, starting replica...'
-  #     chmod 0700 /var/lib/postgresql/data
-  #     postgres
-  #     "
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    # command: |
+    #   postgres 
+    #   -c wal_level=replica 
+    #   -c hot_standby=on 
+    #   -c max_wal_senders=10 
+    #   -c max_replication_slots=10 
+    #   -c hot_standby_feedback=on
+
+  read-db:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: ${PG_USER:-admin}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-12345}
+      POSTGRES_HOST_AUTH_METHOD: trust # For simplicity, change this in real projects!
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-d",
+          "${PG_DATABASE:-testdb}",
+          "-U",
+          "${PG_USER:-admin}"
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    depends_on:
+      - write-db
+    ports:
+      - "5433:5432"
+    networks:
+      - pgl-cqrs-net
+    # command: |
+    #   bash -c "
+    #   until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot --host=write-db --port=5432
+    #   do
+    #   echo 'Waiting for primary to connect...'
+    #   sleep 1s
+    #   done
+    #   echo 'Backup done, starting replica...'
+    #   chmod 0700 /var/lib/postgresql/data
+    #   postgres
+    #   "
