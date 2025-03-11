@@ -1,3 +1,6 @@
+CREATE USER replicator WITH REPLICATION ENCRYPTED PASSWORD 'replicator_password';
+SELECT pg_create_physical_replication_slot('replication_slot');
+
 create schema test_schema;
 
 create table test_schema.books

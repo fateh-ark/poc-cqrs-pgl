@@ -20,7 +20,7 @@ var db *pgx.Conn
 
 func main() {
 	var err error
-	connStr := "postgres://admin:12345@localhost:5432/testdb?sslmode=disable"
+	connStr := "postgres://admin:12345@write-db:5433/testdb?sslmode=disable" //NOSONAR
 	db, err = pgx.Connect(context.Background(), connStr)
 	if err != nil {
 		log.Fatal(err)

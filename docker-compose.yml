@@ -10,32 +10,16 @@ services:
       - "8080:8080"
     networks:
       - pgl-cqrs-net
-
-  writer:
-    build: 
-      context: .
-      dockerfile: ./writer/dockerfile
-    ports:
-      - "8081:8080"
-    networks:
-      - pgl-cqrs-net
-  
-  readerr:
-    build:
-      context: .
-      dockerfile: ./reader/dockerfile
-    ports:
-      - "8082:8080"
-    networks:
-      - pgl-cqrs-net
   
   write-db:
     image: postgres:latest
+    hostname: write-db
     environment:
       POSTGRES_DB: testdb
       POSTGRES_USER: ${PG_USER:-admin}
       POSTGRES_PASSWORD: ${PG_PASSWORD:-12345}
-      POSTGRES_HOST_AUTH_METHOD: trust # For simplicity, change this in real projects!
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256\nhost replication all 0.0.0.0/0 md5"
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     healthcheck:
       test:
         [
@@ -50,26 +34,21 @@ services:
       timeout: 30s
       retries: 3
     ports:
-      - "5432:5432"
+      - "5433:5433"
     networks:
       - pgl-cqrs-net
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    # command: |
-    #   postgres 
-    #   -c wal_level=replica 
-    #   -c hot_standby=on 
-    #   -c max_wal_senders=10 
-    #   -c max_replication_slots=10 
-    #   -c hot_standby_feedback=on
+      - ./master_pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - ./master_postgresql.conf:/etc/postgresql/postgresql.conf
+    command: -c config_file=/etc/postgresql/postgresql.conf
 
   read-db:
     image: postgres:latest
+    hostname: read-db
     environment:
-      POSTGRES_DB: testdb
-      POSTGRES_USER: ${PG_USER:-admin}
-      POSTGRES_PASSWORD: ${PG_PASSWORD:-12345}
-      POSTGRES_HOST_AUTH_METHOD: trust # For simplicity, change this in real projects!
+      PGUSER: replicator
+      PGPASSWORD: replicator_password
     healthcheck:
       test:
         [
@@ -86,17 +65,41 @@ services:
     depends_on:
       - write-db
     ports:
-      - "5433:5432"
+      - "5432:5432"
     networks:
       - pgl-cqrs-net
+    # volumes:
+    #   - ./slave_pg_hba.conf:/etc/postgresql/pg_hba.conf
+    #   - ./slave_postgresql.conf:/etc/postgresql.conf
     # command: |
     #   bash -c "
-    #   until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot --host=write-db --port=5432
+    #   until pg_isready -U replicator -h write-db -p 5433
     #   do
-    #   echo 'Waiting for primary to connect...'
-    #   sleep 1s
+    #   echo 'Waiting for primary to be to connect...'
+    #   sleep 2s
     #   done
     #   echo 'Backup done, starting replica...'
-    #   chmod 0700 /var/lib/postgresql/data
-    #   postgres
+    #   pg_basebackup -h write-db -U replicator -D /var/lib/postgresql/data -R --slot=replication_slot --port=5433
     #   "
+
+  writer:
+    build: 
+      context: ./writer
+      dockerfile: ./dockerfile
+    ports:
+      - "8081:8080"
+    networks:
+      - pgl-cqrs-net
+    depends_on:
+      - write-db
+  
+  reader:
+    build:
+      context: ./reader
+      dockerfile: ./dockerfile
+    ports:
+      - "8082:8080"
+    networks:
+      - pgl-cqrs-net
+    depends_on:
+      - read-db
