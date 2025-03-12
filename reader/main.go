@@ -54,7 +54,7 @@ func getBook(c *gin.Context) {
 
 	// attempt to retrieve the book with the inputted id
 	var book Book
-	err = db.QueryRow(context.Background(), "SELECT id, title, author FROM books WHERE id = $1", id).Scan(&book.ID, &book.Title, &book.Author)
+	err = db.QueryRow(context.Background(), "SELECT id, title, author FROM test_schema.books WHERE id = $1", id).Scan(&book.ID, &book.Title, &book.Author)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
@@ -71,7 +71,7 @@ func getBook(c *gin.Context) {
 // returns a list of all books and its data. not suitable for actual system may require pagination.
 func listBooks(c *gin.Context) {
 	// fetch all rows from the pg
-	rows, err := db.Query(context.Background(), "SELECT id, title, author FROM books")
+	rows, err := db.Query(context.Background(), "SELECT id, title, author FROM test_schema.books")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

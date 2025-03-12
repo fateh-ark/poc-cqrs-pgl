@@ -49,7 +49,7 @@ func createBook(c *gin.Context) {
 		return
 	}
 
-	err := db.QueryRow(context.Background(), "INSERT INTO books (title, author) VALUES ($1, $2) RETURNING id", book.Title, book.Author).Scan(&book.ID)
+	err := db.QueryRow(context.Background(), "INSERT INTO test_schema.books (title, author) VALUES ($1, $2) RETURNING id", book.Title, book.Author).Scan(&book.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -72,7 +72,7 @@ func updateBook(c *gin.Context) {
 	}
 	book.ID = id
 
-	ct, err := db.Exec(context.Background(), "UPDATE books SET title = $1, author = $2 WHERE id = $3", book.Title, book.Author, book.ID)
+	ct, err := db.Exec(context.Background(), "UPDATE test_schema.books SET title = $1, author = $2 WHERE id = $3", book.Title, book.Author, book.ID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -94,7 +94,7 @@ func deleteBook(c *gin.Context) {
 		return
 	}
 
-	ct, err := db.Exec(context.Background(), "DELETE FROM books WHERE id = $1", id)
+	ct, err := db.Exec(context.Background(), "DELETE FROM test_schema.books WHERE id = $1", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
