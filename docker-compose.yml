@@ -24,20 +24,18 @@ services:
       POSTGRESQL_PASSWORD: 12345
       POSTGRESQL_DATABASE: testdb
       ALLOW_EMPTY_PASSWORD: yes
-      POSTGRESQL_PORT_NUMBER: 5433
     healthcheck: &pg_healthcheck
       test: 
         [ "CMD", "pg_isready", "-d", "${POSTGRESQL_DATABASE}", "-U", "${POSTGRESQL_USERNAME:-admin}" ]
       interval: 30s
       timeout: 30s
       retries: 3
-    ports:
-      - "5433:5433"
+    # ports:
+    #   - "5433:5432"
     networks:
       - pgl-cqrs-net
     volumes:
      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-
 
   read-db:
     image: bitnami/postgresql
@@ -50,14 +48,42 @@ services:
       POSTGRESQL_REPLICATION_MODE: slave
       POSTGRESQL_REPLICATION_USER: repl_user
       POSTGRESQL_REPLICATION_PASSWORD: repl_user
-      POSTGRESQL_MASTER_PORT_NUMBER: 5433
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432
       ALLOW_EMPTY_PASSWORD: yes
     healthcheck:
       <<: *pg_healthcheck
     depends_on:
       - write-db
+    # ports:
+    #   - "5432:5432"
+    networks:
+      - pgl-cqrs-net
+
+  pgpool:
+    image: bitnami/pgpool
+    environment:
+      PGPOOL_ADMIN_USERNAME: admin
+      PGPOOL_ADMIN_PASSWORD: 12345
+      PGPOOL_USERNAME: guest
+      PGPOOL_PASSWORD: 12345
+      PGPOOL_POSTGRES_USERNAME: admin
+      PGPOOL_POSTGRES_PASSWORD: 12345
+      PGPOOL_BACKEND_NODES: 0:write-db:5432,1:read-db:5432
+      PGPOOL_BACKEND_APPLICATION_NAME: write-db,read-db
+      PGPOOL_BACKEND_WEIGHT: 1,1
+      PGPOOL_LOAD_BALANCE_MODE: stream
+      PGPOOL_SR_CHECK_USER: repl_user
+      PGPOOL_SR_CHECK_PASSWORD: repl_user
+      PGPOOL_SR_CHECK_PERIOD: 10
+      PGPOOL_SR_CHECK_RETRY: 5
+      PGPOOL_SR_CHECK_TIMEOUT: 10
+      PGPOOL_ENABLE_LDAP: no
+      PGPOOL_CHILD_LIFE_TIME: 300
+    depends_on:
+      - write-db
+      - read-db
     ports:
-      - "5432:5432"
+      - "5434:5432"
     networks:
       - pgl-cqrs-net
   
@@ -76,7 +102,7 @@ services:
     networks:
       - pgl-cqrs-net
     depends_on:
-      - write-db
+      - pgpool
       - rabbitmq
   
   reader:
@@ -86,7 +112,7 @@ services:
     networks:
       - pgl-cqrs-net
     depends_on:
-      - read-db
+      - pgpool
       - rabbitmq
 
   log-consumer:

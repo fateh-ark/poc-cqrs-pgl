@@ -26,7 +26,7 @@ func main() {
 	var err error
 
 	//PostgreSQL setup
-	connStr := "postgres://admin:12345@write-db:5433/testdb?sslmode=disable" //NOSONAR
+	connStr := "postgres://admin:12345@pgpool:5432/testdb?sslmode=disable" //NOSONAR
 	db, err = pgx.Connect(context.Background(), connStr)
 	if err != nil {
 		log.Fatal(err)
