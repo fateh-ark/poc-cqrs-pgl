@@ -72,7 +72,7 @@ services:
   writer:
     build: ./writer
     ports:
-      - "8081:8081"
+      - "8081:8080"
     networks:
       - pgl-cqrs-net
     depends_on:

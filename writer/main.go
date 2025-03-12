@@ -72,7 +72,7 @@ func main() {
 	router.PUT("/books/:id", updateBook)
 	router.DELETE("/books/:id", deleteBook)
 
-	router.Run(":8081")
+	router.Run(":8080")
 }
 
 func logEvent(routingKey string, book Book, sourceIp string) {
