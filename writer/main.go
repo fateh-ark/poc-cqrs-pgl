@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Book struct {
@@ -17,9 +19,13 @@ type Book struct {
 }
 
 var db *pgx.Conn
+var rabbitConn *amqp.Connection
+var rabbitChan *amqp.Channel
 
 func main() {
 	var err error
+
+	//PostgreSQL setup
 	connStr := "postgres://admin:12345@write-db:5433/testdb?sslmode=disable" //NOSONAR
 	db, err = pgx.Connect(context.Background(), connStr)
 	if err != nil {
@@ -33,6 +39,33 @@ func main() {
 	}
 	log.Println("Database connection successful")
 
+	// RabbitMQ setup
+	rabbitConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+	if err != nil {
+		log.Fatal("Failed to connect to RabbitMQ:", err)
+	}
+	defer rabbitConn.Close()
+
+	rabbitChan, err = rabbitConn.Channel()
+	if err != nil {
+		log.Fatal("Failed to open a channel:", err)
+	}
+	defer rabbitChan.Close()
+
+	err = rabbitChan.ExchangeDeclare(
+		"book_events", // Exchange name
+		"topic",       // Exchange type (topic)
+		true,          // Durable
+		false,         // Auto-deleted
+		false,         // Internal
+		false,         // No-wait
+		nil,           // Arguments
+	)
+	if err != nil {
+		log.Fatal("Failed to declare an exchange:", err)
+	}
+
+	// Gin Setup
 	router := gin.Default()
 
 	router.POST("/books", createBook)
@@ -40,6 +73,33 @@ func main() {
 	router.DELETE("/books/:id", deleteBook)
 
 	router.Run(":8081")
+}
+
+func logEvent(routingKey string, book Book, sourceIp string) {
+	event := map[string]interface{}{
+		"book":   book,
+		"source": sourceIp,
+	}
+	eventJSON, err := json.Marshal(event)
+	if err != nil {
+		log.Println("Error marshalling event:", err)
+		return
+	}
+
+	err = rabbitChan.Publish(
+		"book_events", // Exchange
+		routingKey,    // Routing key
+		false,         // Mandatory
+		false,         // Immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        eventJSON,
+		})
+	if err != nil {
+		log.Println("Error publishing message:", err)
+	} else {
+		log.Println("Event published:", routingKey)
+	}
 }
 
 func createBook(c *gin.Context) {
@@ -55,6 +115,7 @@ func createBook(c *gin.Context) {
 		return
 	}
 
+	logEvent("book.created", book, c.ClientIP())
 	c.JSON(http.StatusCreated, book)
 }
 
@@ -84,6 +145,7 @@ func updateBook(c *gin.Context) {
 		return
 	}
 
+	logEvent("book.updated", book, c.ClientIP())
 	c.JSON(http.StatusOK, book)
 }
 
@@ -105,5 +167,6 @@ func deleteBook(c *gin.Context) {
 		return
 	}
 
+	logEvent("book.deleted", Book{ID: id}, c.ClientIP())
 	c.JSON(http.StatusNoContent, nil)
 }

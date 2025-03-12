@@ -60,25 +60,38 @@ services:
       - "5432:5432"
     networks:
       - pgl-cqrs-net
+  
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - pgl-cqrs-net
 
   writer:
-    build: 
-      context: ./writer
-      dockerfile: ./dockerfile
+    build: ./writer
     ports:
       - "8081:8081"
     networks:
       - pgl-cqrs-net
     depends_on:
       - write-db
+      - rabbitmq
   
   reader:
-    build:
-      context: ./reader
-      dockerfile: ./dockerfile
+    build: ./reader
     ports:
       - "8082:8080"
     networks:
       - pgl-cqrs-net
     depends_on:
       - read-db
+      - rabbitmq
+
+  log-consumer:
+    build: ./log-consumer
+    networks:
+      - pgl-cqrs-net
+    depends_on:
+      - rabbitmq
