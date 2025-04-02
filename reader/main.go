@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -19,26 +21,37 @@ type Book struct {
 	Author string `json:"author"`
 }
 
-var db *pgx.Conn
+var dbPool *pgxpool.Pool // Use pgxpool.Pool
 var rabbitConn *amqp.Connection
 var rabbitChan *amqp.Channel
 
 func main() {
 	var err error
 
-	// PostgreSQL setup
+	// PostgreSQL setup using pgxpool
 	connStr := "postgres://admin:12345@pgpool:5432/testdb?sslmode=disable" //NOSONAR
-	db, err = pgx.Connect(context.Background(), connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close(context.Background())
+	maxRetries := 10
+	retryDelay := 2 * time.Second
 
-	err = db.Ping(context.Background())
+	for i := 0; i < maxRetries; i++ {
+		dbPool, err = pgxpool.New(context.Background(), connStr)
+		if err == nil {
+			break // Connection successful
+		}
+		log.Printf("Failed to connect to database (attempt %d/%d): %v", i+1, maxRetries, err)
+		time.Sleep(retryDelay)
+	}
+
+	if err != nil {
+		log.Fatalf("Failed to connect to database after %d attempts: %v", maxRetries, err)
+	}
+	defer dbPool.Close() // Close the pool
+
+	err = dbPool.Ping(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Database connection successful")
+	log.Println("Database connection pool successful")
 
 	// RabbitMQ Setup
 	rabbitConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
@@ -110,7 +123,7 @@ func getBook(c *gin.Context) {
 
 	// attempt to retrieve the book with the inputted id
 	var book Book
-	err = db.QueryRow(context.Background(), "SELECT id, title, author FROM test_schema.books WHERE id = $1", id).Scan(&book.ID, &book.Title, &book.Author)
+	err = dbPool.QueryRow(context.Background(), "SELECT id, title, author FROM test_schema.books WHERE id = $1", id).Scan(&book.ID, &book.Title, &book.Author)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
@@ -128,7 +141,7 @@ func getBook(c *gin.Context) {
 // returns a list of all books and its data. not suitable for actual system may require pagination.
 func listBooks(c *gin.Context) {
 	// fetch all rows from the pg
-	rows, err := db.Query(context.Background(), "SELECT id, title, author FROM test_schema.books")
+	rows, err := dbPool.Query(context.Background(), "SELECT id, title, author FROM test_schema.books")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

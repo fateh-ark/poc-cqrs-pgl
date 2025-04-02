@@ -6,9 +6,10 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -18,26 +19,31 @@ type Book struct {
 	Author string `json:"author"`
 }
 
-var db *pgx.Conn
+var dbPool *pgxpool.Pool // Use pgxpool.Pool
 var rabbitConn *amqp.Connection
 var rabbitChan *amqp.Channel
 
 func main() {
 	var err error
 
-	//PostgreSQL setup
+	// PostgreSQL setup using pgxpool
 	connStr := "postgres://admin:12345@pgpool:5432/testdb?sslmode=disable" //NOSONAR
-	db, err = pgx.Connect(context.Background(), connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close(context.Background())
+	maxRetries := 10
+	retryDelay := 2 * time.Second
 
-	err = db.Ping(context.Background())
-	if err != nil {
-		log.Fatal(err)
+	for i := 0; i < maxRetries; i++ {
+		dbPool, err = pgxpool.New(context.Background(), connStr)
+		if err == nil {
+			break // Connection successful
+		}
+		log.Printf("Failed to connect to database (attempt %d/%d): %v", i+1, maxRetries, err)
+		time.Sleep(retryDelay)
 	}
-	log.Println("Database connection successful")
+
+	if err != nil {
+		log.Fatalf("Failed to connect to database after %d attempts: %v", maxRetries, err)
+	}
+	defer dbPool.Close() // Close the pool
 
 	// RabbitMQ setup
 	rabbitConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
@@ -109,7 +115,7 @@ func createBook(c *gin.Context) {
 		return
 	}
 
-	err := db.QueryRow(context.Background(), "INSERT INTO test_schema.books (title, author) VALUES ($1, $2) RETURNING id", book.Title, book.Author).Scan(&book.ID)
+	err := dbPool.QueryRow(context.Background(), "INSERT INTO test_schema.books (title, author) VALUES ($1, $2) RETURNING id", book.Title, book.Author).Scan(&book.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -133,7 +139,7 @@ func updateBook(c *gin.Context) {
 	}
 	book.ID = id
 
-	ct, err := db.Exec(context.Background(), "UPDATE test_schema.books SET title = $1, author = $2 WHERE id = $3", book.Title, book.Author, book.ID)
+	ct, err := dbPool.Exec(context.Background(), "UPDATE test_schema.books SET title = $1, author = $2 WHERE id = $3", book.Title, book.Author, book.ID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -156,7 +162,7 @@ func deleteBook(c *gin.Context) {
 		return
 	}
 
-	ct, err := db.Exec(context.Background(), "DELETE FROM test_schema.books WHERE id = $1", id)
+	ct, err := dbPool.Exec(context.Background(), "DELETE FROM test_schema.books WHERE id = $1", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
