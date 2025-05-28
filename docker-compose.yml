@@ -79,9 +79,13 @@ services:
       PGPOOL_SR_CHECK_TIMEOUT: 10
       PGPOOL_ENABLE_LDAP: no
       PGPOOL_CHILD_LIFE_TIME: 300
+    healthcheck:
+      <<: *pg_healthcheck
     depends_on:
-      - write-db
-      - read-db
+      write-db:
+          condition: service_healthy
+      read-db:
+          condition: service_healthy
     ports:
       - "5434:5432"
     networks:
@@ -102,8 +106,10 @@ services:
     networks:
       - pgl-cqrs-net
     depends_on:
-      - pgpool
-      - rabbitmq
+      pgpool:
+         condition: service_healthy
+      rabbitmq:
+         condition: service_healthy
   
   reader:
     build: ./reader
@@ -112,8 +118,10 @@ services:
     networks:
       - pgl-cqrs-net
     depends_on:
-      - pgpool
-      - rabbitmq
+      pgpool:
+         condition: service_healthy
+      rabbitmq:
+         condition: service_healthy
 
   log-consumer:
     build: ./log-consumer

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: write-db
+  labels:
+    app: write-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: write-db
+  template:
+    metadata:
+      labels:
+        app: write-db
+    spec:
+      containers:
+        - name: write-db
+          image: bitnami/postgresql
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRESQL_PGAUDIT_LOG
+              value: "READ,WRITE"
+            - name: POSTGRESQL_LOG_HOSTNAME
+              value: "true"
+            - name: POSTGRESQL_REPLICATION_MODE
+              value: "master"
+            - name: POSTGRESQL_REPLICATION_USER
+              value: "repl_user"
+            - name: POSTGRESQL_REPLICATION_PASSWORD
+              value: "repl_user"
+            - name: POSTGRESQL_USERNAME
+              value: "admin"
+            - name: POSTGRESQL_PASSWORD
+              value: "12345"
+            - name: POSTGRESQL_DATABASE
+              value: "testdb"
+            - name: ALLOW_EMPTY_PASSWORD
+              value: "yes"
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+      volumes:
+        - name: init-sql
+          configMap:
+            name: write-db-init-sql

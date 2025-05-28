@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reader
+  labels:
+    app: reader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reader
+  template:
+    metadata:
+      labels:
+        app: reader
+    spec:
+      containers:
+        - name: reader
+          image: reader
+          imagePullPolicy: IfNotPresent
+          # Add env, ports, etc. as needed
