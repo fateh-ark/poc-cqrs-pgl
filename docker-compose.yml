@@ -23,7 +23,7 @@ services:
     healthcheck: &pg_healthcheck
       test: 
         [ "CMD", "pg_isready", "-d", "${POSTGRESQL_DATABASE}", "-U", "${POSTGRESQL_USERNAME}" ]
-      interval: 10s
+      interval: 5s
       timeout: 10s
       retries: 5
     networks:
@@ -72,7 +72,10 @@ services:
       PGPOOL_ENABLE_LDAP: no
       PGPOOL_CHILD_LIFE_TIME: 300
     healthcheck:
-      <<: *pg_healthcheck
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/5432"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
     depends_on:
       write-db:
           condition: service_healthy
@@ -92,21 +95,9 @@ services:
       - pgl-cqrs-net
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 10s
       retries: 5
-
-  writer:
-    build: ./writer
-    # ports:
-    #   - "8081:8080"
-    networks:
-      - pgl-cqrs-net
-    depends_on:
-      pgpool:
-         condition: service_healthy
-      rabbitmq:
-         condition: service_healthy
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
@@ -118,13 +109,19 @@ services:
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: ${KC_DB_USERNAME}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+
     command: start-dev --hostname-strict=false --hostname-url=http://keycloak:8080
     depends_on:
       - keycloak-db
     ports:
-      - "8089:8080"
+      - "8080:8080"
     networks:
       - pgl-cqrs-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/realms/master"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   keycloak-db:
     image: postgres:15
@@ -137,6 +134,20 @@ services:
     networks:
       - pgl-cqrs-net
   
+  writer:
+    build: ./writer
+    # ports:
+    #   - "8081:8080"
+    environment:
+      KEYCLOAK_PUBLIC_KEY: ${KEYCLOAK_PUBLIC_KEY}
+    networks:
+      - pgl-cqrs-net
+    depends_on:
+      pgpool:
+         condition: service_healthy
+      rabbitmq:
+         condition: service_healthy
+
   reader:
     build: ./reader
     # ports:
@@ -181,11 +192,18 @@ services:
       OAUTH2_PROXY_UPSTREAMS: ${OAUTH2_PROXY_UPSTREAMS}
       OAUTH2_PROXY_HTTP_ADDRESS: ${OAUTH2_PROXY_HTTP_ADDRESS}
       OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS: ${OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS}
-      OAUTH2_PROXY_EXTRA_JWT_ISSUERS: ${OAUTH2_PROXY_EXTRA_JWT_ISSUERS}
+      OAUTH2_PROXY_EXTRA_JWT_ISSUERS: |
+        http://keycloak:8080/realms/poc-cqrs=${KEYCLOAK_PUBLIC_KEY}
+    volumes:
+      - ./oauth2-templates:/etc/oauth2-proxy/templates
+    command:
+      - --custom-templates-dir=/etc/oauth2-proxy/templates
     ports:
       - "4180:4180"
     depends_on:
-      - keycloak
-      - nginx
+      keycloak:
+        condition: service_healthy
+      nginx:
+        condition: service_started
     networks:
       - pgl-cqrs-net

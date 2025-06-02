@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -22,6 +25,8 @@ type Book struct {
 var dbPool *pgxpool.Pool // Use pgxpool.Pool
 var rabbitConn *amqp.Connection
 var rabbitChan *amqp.Channel
+
+var keycloakPublicKey = strings.ReplaceAll(os.Getenv("KEYCLOAK_PUBLIC_KEY"), `\n`, "\n")
 
 func main() {
 	var err error
@@ -74,11 +79,81 @@ func main() {
 	// Gin Setup
 	router := gin.Default()
 
-	router.POST("/books", createBook)
-	router.PUT("/books/:id", updateBook)
-	router.DELETE("/books/:id", deleteBook)
+	router.POST("/books", JWTAuthMiddleware("writer-basic", "writer-admin"), createBook)
+	router.PUT("/books/:id", JWTAuthMiddleware("writer-basic", "writer-admin"), updateBook)
+	router.DELETE("/books/:id", JWTAuthMiddleware("writer-admin"), deleteBook)
 
 	router.Run(":8080")
+}
+
+func JWTAuthMiddleware(requiredRoles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing or invalid Authorization header"})
+			return
+		}
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+		keyFunc := func(token *jwt.Token) (interface{}, error) {
+			return jwt.ParseRSAPublicKeyFromPEM([]byte(keycloakPublicKey))
+		}
+
+		token, err := jwt.Parse(tokenString, keyFunc, jwt.WithValidMethods([]string{"RS256"}))
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			return
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
+		}
+
+		roles := extractRoles(claims)
+		for _, required := range requiredRoles {
+			for _, role := range roles {
+				if role == required {
+					c.Next()
+					return
+				}
+			}
+		}
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Insufficient role"})
+	}
+}
+
+func extractRoles(claims jwt.MapClaims) []string {
+	roles := []string{}
+
+	// Realm roles
+	if realmAccess, ok := claims["realm_access"].(map[string]interface{}); ok {
+		if rolesArr, ok := realmAccess["roles"].([]interface{}); ok {
+			for _, r := range rolesArr {
+				if roleStr, ok := r.(string); ok {
+					roles = append(roles, roleStr)
+				}
+			}
+		}
+	}
+
+	// Resource roles (for oauth2-proxy client)
+	if resourceAccess, ok := claims["resource_access"].(map[string]interface{}); ok {
+		if client, ok := resourceAccess["oauth2-proxy"].(map[string]interface{}); ok {
+			if rolesArr, ok := client["roles"].([]interface{}); ok {
+				for _, r := range rolesArr {
+					if roleStr, ok := r.(string); ok {
+						roles = append(roles, roleStr)
+					}
+				}
+			}
+		}
+	}
+
+	// log.Println("User roles: %v", roles)
+
+	return roles
 }
 
 func logEvent(routingKey string, book Book, sourceIp string) {
