@@ -3,14 +3,10 @@ name: poc-cqrs-pgl
 networks:
   pgl-cqrs-net:
 
+volumes:
+  keycloak_db_data:
+
 services:
-  # swagger-ui:
-  #   image: swaggerapi/swagger-ui
-  #   ports:
-  #     - "8080:8080"
-  #   networks:
-  #     - pgl-cqrs-net
-  
   write-db:
     image: bitnami/postgresql
     hostname: write-db
@@ -18,20 +14,18 @@ services:
       POSTGRESQL_PGAUDIT_LOG: READ,WRITE
       POSTGRESQL_LOG_HOSTNAME: true
       POSTGRESQL_REPLICATION_MODE: master
-      POSTGRESQL_REPLICATION_USER: repl_user
-      POSTGRESQL_REPLICATION_PASSWORD: repl_user
-      POSTGRESQL_USERNAME: admin
-      POSTGRESQL_PASSWORD: 12345
-      POSTGRESQL_DATABASE: testdb
+      POSTGRESQL_REPLICATION_USER: ${POSTGRESQL_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${POSTGRESQL_REPLICATION_PASSWORD}
+      POSTGRESQL_USERNAME: ${POSTGRESQL_USERNAME}
+      POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD}
+      POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE}
       ALLOW_EMPTY_PASSWORD: yes
     healthcheck: &pg_healthcheck
       test: 
-        [ "CMD", "pg_isready", "-d", "${POSTGRESQL_DATABASE}", "-U", "${POSTGRESQL_USERNAME:-admin}" ]
-      interval: 30s
-      timeout: 30s
-      retries: 3
-    # ports:
-    #   - "5433:5432"
+        [ "CMD", "pg_isready", "-d", "${POSTGRESQL_DATABASE}", "-U", "${POSTGRESQL_USERNAME}" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
     networks:
       - pgl-cqrs-net
     volumes:
@@ -41,39 +35,37 @@ services:
     image: bitnami/postgresql
     hostname: read-db
     environment:
-      POSTGRESQL_PASSWORD: 12345
+      POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD}
       POSTGRESQL_MASTER_HOST: write-db
       POSTGRESQL_PGAUDIT_LOG: READ
       POSTGRESQL_LOG_HOSTNAME: true
       POSTGRESQL_REPLICATION_MODE: slave
-      POSTGRESQL_REPLICATION_USER: repl_user
-      POSTGRESQL_REPLICATION_PASSWORD: repl_user
+      POSTGRESQL_REPLICATION_USER: ${POSTGRESQL_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${POSTGRESQL_REPLICATION_PASSWORD}
       POSTGRESQL_MASTER_PORT_NUMBER: 5432
       ALLOW_EMPTY_PASSWORD: yes
     healthcheck:
       <<: *pg_healthcheck
     depends_on:
       - write-db
-    # ports:
-    #   - "5432:5432"
     networks:
       - pgl-cqrs-net
 
   pgpool:
     image: bitnami/pgpool
     environment:
-      PGPOOL_ADMIN_USERNAME: admin
-      PGPOOL_ADMIN_PASSWORD: 12345
-      PGPOOL_USERNAME: guest
-      PGPOOL_PASSWORD: 12345
-      PGPOOL_POSTGRES_USERNAME: admin
-      PGPOOL_POSTGRES_PASSWORD: 12345
+      PGPOOL_ADMIN_USERNAME: ${PGPOOL_ADMIN_USERNAME}
+      PGPOOL_ADMIN_PASSWORD: ${PGPOOL_ADMIN_PASSWORD}
+      PGPOOL_USERNAME: ${PGPOOL_USERNAME}
+      PGPOOL_PASSWORD: ${PGPOOL_PASSWORD}
+      PGPOOL_POSTGRES_USERNAME: ${PGPOOL_POSTGRES_USERNAME}
+      PGPOOL_POSTGRES_PASSWORD: ${PGPOOL_POSTGRES_PASSWORD}
       PGPOOL_BACKEND_NODES: 0:write-db:5432,1:read-db:5432
       PGPOOL_BACKEND_APPLICATION_NAME: write-db,read-db
       PGPOOL_BACKEND_WEIGHT: 1,1
       PGPOOL_LOAD_BALANCE_MODE: stream
-      PGPOOL_SR_CHECK_USER: repl_user
-      PGPOOL_SR_CHECK_PASSWORD: repl_user
+      PGPOOL_SR_CHECK_USER: ${POSTGRESQL_REPLICATION_USER}
+      PGPOOL_SR_CHECK_PASSWORD: ${POSTGRESQL_REPLICATION_PASSWORD}
       PGPOOL_SR_CHECK_PERIOD: 10
       PGPOOL_SR_CHECK_RETRY: 5
       PGPOOL_SR_CHECK_TIMEOUT: 10
@@ -98,6 +90,11 @@ services:
       - "15672:15672"
     networks:
       - pgl-cqrs-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   writer:
     build: ./writer
@@ -110,6 +107,35 @@ services:
          condition: service_healthy
       rabbitmq:
          condition: service_healthy
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+    command: start-dev --hostname-strict=false --hostname-url=http://keycloak:8080
+    depends_on:
+      - keycloak-db
+    ports:
+      - "8089:8080"
+    networks:
+      - pgl-cqrs-net
+
+  keycloak-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - pgl-cqrs-net
   
   reader:
     build: ./reader
@@ -128,15 +154,38 @@ services:
     networks:
       - pgl-cqrs-net
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   nginx:
     image: nginx:latest
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
     ports:
-      - "80:80"
+      - "80"
     depends_on:
       - writer
+      - reader
+    networks:
+      - pgl-cqrs-net
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    environment:
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://keycloak:8080/realms/poc-cqrs
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_PROXY_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
+      OAUTH2_PROXY_EMAIL_DOMAINS: ${OAUTH2_PROXY_EMAIL_DOMAINS}
+      OAUTH2_PROXY_UPSTREAMS: ${OAUTH2_PROXY_UPSTREAMS}
+      OAUTH2_PROXY_HTTP_ADDRESS: ${OAUTH2_PROXY_HTTP_ADDRESS}
+      OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS: ${OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS}
+      OAUTH2_PROXY_EXTRA_JWT_ISSUERS: ${OAUTH2_PROXY_EXTRA_JWT_ISSUERS}
+    ports:
+      - "4180:4180"
+    depends_on:
+      - keycloak
+      - nginx
     networks:
       - pgl-cqrs-net

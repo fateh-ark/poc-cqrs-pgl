@@ -11,7 +11,7 @@ export function postEndpoint() {
         author: faker.book.bookAuthor()
     }
     const res = http.post(
-        'http://localhost:80/books',
+        'http://127.0.0.1:52500/books',
         JSON.stringify(bookData),
         {headers: { 'Content-Type': 'application/json' },}
     );
@@ -24,7 +24,7 @@ export function postEndpoint() {
 export function getByIdEndpoint() {
   group('Get by ID endpoint', function () {
     const randomId = Math.floor(Math.random() * 20) + 1;
-    const url = `http://localhost:80/books/${randomId}`;
+    const url = `http://127.0.0.1:52500/books/${randomId}`;
     const res = http.get(url);
     const cek = check(res, { 'status is 200 or 404': (r) => r.status === 200 || r.status === 404 });
     sleep(1);

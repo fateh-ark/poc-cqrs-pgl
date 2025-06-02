@@ -4,7 +4,7 @@ import { check, group, sleep } from 'k6';
 // Endpoint 1: /users
 export function getAllEndpoint() {
   group('Get All Books endpoint', function () {
-    const res = http.get('http://localhost:80/books');
+    const res = http.get('http://127.0.0.1:52500/books');
     check(res, { 'status is 200': (r) => r.status === 200 });
     sleep(1);
   });
@@ -14,7 +14,7 @@ export function getAllEndpoint() {
 export function getByIdEndpoint() {
   group('Read random book endpoint', function () {
     const randomId = Math.floor(Math.random() * 5) + 1;
-    const url = `http://localhost:80/books/${randomId}`;
+    const url = `http://127.0.0.1:52500/books/${randomId}`;
     const res = http.get(url);
     check(res, { 'status is 200': (r) => r.status === 200 });
     sleep(1);
