@@ -21,17 +21,35 @@ spec:
             - containerPort: 5432
           env:
             - name: PGPOOL_ADMIN_USERNAME
-              value: "admin"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PGPOOL_ADMIN_USERNAME
             - name: PGPOOL_ADMIN_PASSWORD
-              value: "12345"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PGPOOL_ADMIN_PASSWORD
             - name: PGPOOL_USERNAME
-              value: "guest"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PGPOOL_USERNAME
             - name: PGPOOL_PASSWORD
-              value: "12345"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PGPOOL_PASSWORD
             - name: PGPOOL_POSTGRES_USERNAME
-              value: "admin"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PGPOOL_POSTGRES_USERNAME
             - name: PGPOOL_POSTGRES_PASSWORD
-              value: "12345"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PGPOOL_POSTGRES_PASSWORD
             - name: PGPOOL_BACKEND_NODES
               value: "0:write-db:5432,1:read-db:5432"
             - name: PGPOOL_BACKEND_APPLICATION_NAME
@@ -41,9 +59,15 @@ spec:
             - name: PGPOOL_LOAD_BALANCE_MODE
               value: "stream"
             - name: PGPOOL_SR_CHECK_USER
-              value: "repl_user"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRESQL_REPLICATION_USER
             - name: PGPOOL_SR_CHECK_PASSWORD
-              value: "repl_user"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRESQL_REPLICATION_PASSWORD
             - name: PGPOOL_SR_CHECK_PERIOD
               value: "10"
             - name: PGPOOL_SR_CHECK_RETRY

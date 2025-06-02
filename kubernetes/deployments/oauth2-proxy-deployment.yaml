@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  labels:
+    app: oauth2-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+          # args:
+          #   - --custom-templates-dir=/etc/oauth2-proxy/templates
+          env:
+            - name: OAUTH2_PROXY_PROVIDER
+              value: oidc
+            - name: OAUTH2_PROXY_OIDC_ISSUER_URL
+              value: http://keycloak:8080/realms/poc-cqrs
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: OAUTH2_PROXY_CLIENT_ID
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: OAUTH2_PROXY_CLIENT_SECRET
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: OAUTH2_PROXY_COOKIE_SECRET
+            - name: OAUTH2_PROXY_EMAIL_DOMAINS
+              value: "*"
+            - name: OAUTH2_PROXY_UPSTREAMS
+              value: http://nginx
+            - name: OAUTH2_PROXY_HTTP_ADDRESS
+              value: "0.0.0.0:4180"
+            - name: OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS
+              value: "true"
+            - name: OAUTH2_PROXY_EXTRA_JWT_ISSUERS
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: OAUTH2_PROXY_EXTRA_JWT_ISSUERS
+          ports:
+            - containerPort: 4180
+          # volumeMounts:
+          #   - name: oauth2-templates
+          #     mountPath: /etc/oauth2-proxy/templates
+      # volumes:
+      #   - name: oauth2-templates
+      #     configMap:
+      #       name: oauth2-templates

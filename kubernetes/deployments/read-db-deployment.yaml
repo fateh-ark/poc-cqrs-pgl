@@ -21,7 +21,10 @@ spec:
             - containerPort: 5432
           env:
             - name: POSTGRESQL_PASSWORD
-              value: "12345"
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: POSTGRESQL_PASSWORD
             - name: POSTGRESQL_MASTER_HOST
               value: "write-db"
             - name: POSTGRESQL_PGAUDIT_LOG
@@ -31,9 +34,15 @@ spec:
             - name: POSTGRESQL_REPLICATION_MODE
               value: "slave"
             - name: POSTGRESQL_REPLICATION_USER
-              value: "repl_user"
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: POSTGRESQL_REPLICATION_USER
             - name: POSTGRESQL_REPLICATION_PASSWORD
-              value: "repl_user"
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: POSTGRESQL_REPLICATION_PASSWORD
             - name: POSTGRESQL_MASTER_PORT_NUMBER
               value: "5432"
             - name: ALLOW_EMPTY_PASSWORD

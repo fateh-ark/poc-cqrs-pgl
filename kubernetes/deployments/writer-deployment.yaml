@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: writer
+  labels:
+    app: writer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: writer
+  template:
+    metadata:
+      labels:
+        app: writer
+    spec:
+      containers:
+        - name: writer
+          image: writer
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KEYCLOAK_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: KEYCLOAK_PUBLIC_KEY
+            - name: POSTGRESQL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: POSTGRESQL_USERNAME
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: POSTGRESQL_PASSWORD
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: POSTGRESQL_DATABASE
+            - name: PGPOOL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_USERNAME
+            - name: PGPOOL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_PASSWORD
+            - name: PGPOOL_POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_POSTGRES_USERNAME
+            - name: PGPOOL_POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_POSTGRES_PASSWORD
+            # Add any other needed env vars from your .env here
