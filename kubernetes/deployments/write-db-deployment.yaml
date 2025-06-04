@@ -60,4 +60,4 @@ spec:
       volumes:
         - name: init-sql
           configMap:
-            name: write-db-init-sql
+            name: pg-init

@@ -16,6 +16,27 @@ spec:
     spec:
       containers:
         - name: reader
-          image: reader
+          image: docker.io/arkensa/reader:latest
           imagePullPolicy: IfNotPresent
+          env:
+            - name: KEYCLOAK_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: KEYCLOAK_PUBLIC_KEY
+            - name: PGPOOL_POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_POSTGRES_USERNAME
+            - name: PGPOOL_POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_POSTGRES_PASSWORD
+            - name: PGPOOL_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_NAME
           # Add env, ports, etc. as needed

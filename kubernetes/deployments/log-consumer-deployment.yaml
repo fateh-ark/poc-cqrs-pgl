@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
         - name: log-consumer
-          image: log-consumer
+          image: docker.io/arkensa/log-consumer:latest
           imagePullPolicy: IfNotPresent
           # Add env, ports, etc. as needed

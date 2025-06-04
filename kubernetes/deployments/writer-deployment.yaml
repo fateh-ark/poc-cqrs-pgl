@@ -5,7 +5,7 @@ metadata:
   labels:
     app: writer
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: writer
@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: writer
-          image: writer
+          image: docker.io/arkensa/writer:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: KEYCLOAK_PUBLIC_KEY
@@ -24,31 +24,6 @@ spec:
                 secretKeyRef:
                   name: poc-secrets
                   key: KEYCLOAK_PUBLIC_KEY
-            - name: POSTGRESQL_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: poc-secrets
-                  key: POSTGRESQL_USERNAME
-            - name: POSTGRESQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: poc-secrets
-                  key: POSTGRESQL_PASSWORD
-            - name: POSTGRESQL_DATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: poc-secrets
-                  key: POSTGRESQL_DATABASE
-            - name: PGPOOL_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: poc-secrets
-                  key: PGPOOL_USERNAME
-            - name: PGPOOL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: poc-secrets
-                  key: PGPOOL_PASSWORD
             - name: PGPOOL_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -59,4 +34,9 @@ spec:
                 secretKeyRef:
                   name: poc-secrets
                   key: PGPOOL_POSTGRES_PASSWORD
+            - name: PGPOOL_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: poc-secrets
+                  key: PGPOOL_NAME
             # Add any other needed env vars from your .env here

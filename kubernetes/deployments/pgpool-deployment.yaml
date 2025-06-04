@@ -23,32 +23,32 @@ spec:
             - name: PGPOOL_ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: PGPOOL_ADMIN_USERNAME
             - name: PGPOOL_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: PGPOOL_ADMIN_PASSWORD
             - name: PGPOOL_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: PGPOOL_USERNAME
             - name: PGPOOL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: PGPOOL_PASSWORD
             - name: PGPOOL_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: PGPOOL_POSTGRES_USERNAME
             - name: PGPOOL_POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: PGPOOL_POSTGRES_PASSWORD
             - name: PGPOOL_BACKEND_NODES
               value: "0:write-db:5432,1:read-db:5432"
@@ -61,12 +61,12 @@ spec:
             - name: PGPOOL_SR_CHECK_USER
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: POSTGRESQL_REPLICATION_USER
             - name: PGPOOL_SR_CHECK_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-secrets
+                  name: poc-secrets
                   key: POSTGRESQL_REPLICATION_PASSWORD
             - name: PGPOOL_SR_CHECK_PERIOD
               value: "10"

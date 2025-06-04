@@ -1,0 +1,24 @@
+architecture: replication
+replicaCount: 2  # Number of read replicas (scale as needed)
+postgresql:
+  username: admin
+  replicationUser: repl_user
+  repmgrUsername: repmgr
+  existingSecret: pg-cluster-secrets
+  existingSecretKey: POSTGRESQL_PASSWORD
+  replicationExistingSecret: pg-cluster-secrets
+  replicationExistingSecretKey: POSTGRESQL_REPLICATION_PASSWORD
+  initdbScriptsConfigMap: pg-init
+
+pgpool:
+  adminUsername: admin
+  username: guest
+  postgresUsername: admin
+  existingSecret: pg-cluster-secrets
+  existingSecretKey: password
+  adminExistingSecret: pg-cluster-secrets
+  adminExistingSecretKey: pgpool-admin-password
+  postgresExistingSecret: pg-cluster-secrets
+  postgresExistingSecretKey: pgpool-postgres-password
+  enabled: true
+  replicaCount: 1
