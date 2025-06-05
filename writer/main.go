@@ -25,14 +25,21 @@ type Book struct {
 var dbPool *pgxpool.Pool // Use pgxpool.Pool
 var rabbitConn *amqp.Connection
 var rabbitChan *amqp.Channel
-
 var keycloakPublicKey = strings.ReplaceAll(os.Getenv("KEYCLOAK_PUBLIC_KEY"), `\n`, "\n")
 
 func main() {
 	var err error
 
+	// Check if the Keycloak public key is set
+	if keycloakPublicKey == "" {
+		log.Fatalln("KEYCLOAK_PUBLIC_KEY environment variable is not set")
+	}
+
 	// PostgreSQL setup using pgxpool
-	connStr := "postgres://admin:12345@pgpool:5432/testdb?sslmode=disable" //NOSONAR
+	var connStr = os.Getenv("DB_URL")
+	if connStr == "" {
+		log.Fatalln("DB_URL environment variable is not set")
+	}
 	maxRetries := 10
 	retryDelay := 2 * time.Second
 
@@ -101,6 +108,7 @@ func JWTAuthMiddleware(requiredRoles ...string) gin.HandlerFunc {
 
 		token, err := jwt.Parse(tokenString, keyFunc, jwt.WithValidMethods([]string{"RS256"}))
 		if err != nil || !token.Valid {
+			log.Printf("JWT parse error: %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
@@ -138,9 +146,9 @@ func extractRoles(claims jwt.MapClaims) []string {
 		}
 	}
 
-	// Resource roles (for oauth2-proxy client)
+	// Resource roles
 	if resourceAccess, ok := claims["resource_access"].(map[string]interface{}); ok {
-		if client, ok := resourceAccess["oauth2-proxy"].(map[string]interface{}); ok {
+		if client, ok := resourceAccess["pcg-client"].(map[string]interface{}); ok {
 			if rolesArr, ok := client["roles"].([]interface{}); ok {
 				for _, r := range rolesArr {
 					if roleStr, ok := r.(string); ok {

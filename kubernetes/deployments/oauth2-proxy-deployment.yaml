@@ -23,21 +23,21 @@ spec:
             - name: OAUTH2_PROXY_PROVIDER
               value: oidc
             - name: OAUTH2_PROXY_OIDC_ISSUER_URL
-              value: http://keycloak:8080/realms/poc-cqrs
+              value: http://keycloak:8080/realms/pcg
             - name: OAUTH2_PROXY_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: poc-secrets
+                  name: pcg-secrets
                   key: OAUTH2_PROXY_CLIENT_ID
             - name: OAUTH2_PROXY_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: poc-secrets
+                  name: pcg-secrets
                   key: OAUTH2_PROXY_CLIENT_SECRET
             - name: OAUTH2_PROXY_COOKIE_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: poc-secrets
+                  name: pcg-secrets
                   key: OAUTH2_PROXY_COOKIE_SECRET
             - name: OAUTH2_PROXY_EMAIL_DOMAINS
               value: "*"
@@ -50,7 +50,7 @@ spec:
             - name: OAUTH2_PROXY_EXTRA_JWT_ISSUERS
               valueFrom:
                 secretKeyRef:
-                  name: poc-secrets
+                  name: pcg-secrets
                   key: OAUTH2_PROXY_EXTRA_JWT_ISSUERS
           ports:
             - containerPort: 4180

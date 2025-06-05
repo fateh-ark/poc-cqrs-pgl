@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -29,7 +30,10 @@ func main() {
 	var err error
 
 	// PostgreSQL setup using pgxpool
-	connStr := "postgres://admin:12345@pgpool:5432/testdb?sslmode=disable" //NOSONAR
+	var connStr = os.Getenv("DB_URL")
+	if connStr == "" {
+		log.Fatalln("DB_URL environment variable is not set")
+	}
 	maxRetries := 10
 	retryDelay := 2 * time.Second
 
