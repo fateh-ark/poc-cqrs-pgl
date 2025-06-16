@@ -87,6 +87,9 @@ func main() {
 	router := gin.Default()
 	router.GET("/books/:id", getBook)
 	router.GET("/books", listBooks)
+	router.GET("/privacy", func(c *gin.Context) {
+		c.String(http.StatusOK, `Privacy Policy\n\nWe respect your privacy. This service does not collect, store, or share any personal information beyond what is necessary for its operation. By using this service, you agree to the collection and use of information as described. If you have questions, contact the administrator.`)
+	})
 	router.Run(":8080")
 }
 

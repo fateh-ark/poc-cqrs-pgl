@@ -67,6 +67,14 @@ jobs:
 
       # Optionally add linting, coverage, etc.
 
+  deploy-docker-images:
+    name: Deploy Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
