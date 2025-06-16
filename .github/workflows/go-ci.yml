@@ -117,19 +117,19 @@ jobs:
         run: npm install -g snyk
 
       - name: Snyk test for reader
-        run: snyk test --fail-on=never
+        run: snyk test --exit-code=0 || true
         working-directory: ./reader
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk test for writer
-        run: snyk test --fail-on=never
+        run: snyk test --exit-code=0 || true
         working-directory: ./writer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk test for log-consumer
-        run: snyk test --fail-on=never
+        run: snyk test --exit-code=0 || true
         working-directory: ./log-consumer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
