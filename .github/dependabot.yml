@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/reader"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/writer"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/log-consumer"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/reader"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/writer"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/log-consumer"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

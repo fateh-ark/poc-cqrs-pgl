@@ -113,16 +113,50 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/golang@master
+      - name: Snyk test for reader
+        run: |
+          npm install -g snyk
+          snyk test
+        working-directory: ./reader
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: test --all-projects
 
-      - name: Run Snyk Code (SAST)
-        uses: snyk/actions/golang@master
+      - name: Snyk test for writer
+        run: |
+          npm install -g snyk
+          snyk test
+        working-directory: ./writer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: code test
+
+      - name: Snyk test for log-consumer
+        run: |
+          npm install -g snyk
+          snyk test
+        working-directory: ./log-consumer
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk Code (SAST) for reader
+        run: |
+          npm install -g snyk
+          snyk code test
+        working-directory: ./reader
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk Code (SAST) for writer
+        run: |
+          npm install -g snyk
+          snyk code test
+        working-directory: ./writer
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk Code (SAST) for log-consumer
+        run: |
+          npm install -g snyk
+          snyk code test
+        working-directory: ./log-consumer
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
