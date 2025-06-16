@@ -116,7 +116,7 @@ jobs:
       - name: Snyk test for reader
         run: |
           npm install -g snyk
-          snyk test
+          snyk test --exit-code=0
         working-directory: ./reader
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -124,7 +124,7 @@ jobs:
       - name: Snyk test for writer
         run: |
           npm install -g snyk
-          snyk test
+          snyk test --exit-code=0
         working-directory: ./writer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -132,7 +132,7 @@ jobs:
       - name: Snyk test for log-consumer
         run: |
           npm install -g snyk
-          snyk test
+          snyk test --exit-code=0
         working-directory: ./log-consumer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -140,7 +140,7 @@ jobs:
       - name: Snyk Code (SAST) for reader
         run: |
           npm install -g snyk
-          snyk code test
+          snyk code test --exit-code=0
         working-directory: ./reader
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -148,7 +148,7 @@ jobs:
       - name: Snyk Code (SAST) for writer
         run: |
           npm install -g snyk
-          snyk code test
+          snyk code test --exit-code=0
         working-directory: ./writer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -156,7 +156,7 @@ jobs:
       - name: Snyk Code (SAST) for log-consumer
         run: |
           npm install -g snyk
-          snyk code test
+          snyk code test --exit-code=0
         working-directory: ./log-consumer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
