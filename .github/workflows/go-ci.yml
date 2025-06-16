@@ -135,19 +135,19 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk Code (SAST) for reader
-        run:  snyk code test --fail-on=never
+        run: snyk code test --fail-on=all || true
         working-directory: ./reader
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk Code (SAST) for writer
-        run: snyk code test --fail-on=never
+        run: snyk code test --fail-on=all || true
         working-directory: ./writer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk Code (SAST) for log-consumer
-        run: snyk code test --fail-on=never
+        run: snyk code test --fail-on=all || true
         working-directory: ./log-consumer
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
