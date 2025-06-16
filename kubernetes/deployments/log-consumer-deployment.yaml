@@ -5,7 +5,7 @@ metadata:
   labels:
     app: log-consumer
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: log-consumer
