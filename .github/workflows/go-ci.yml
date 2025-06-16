@@ -1,0 +1,93 @@
+name: Go CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: pcgdb
+          POSTGRES_USER: pcgdb_owner
+          POSTGRES_PASSWORD: npg_yL0I2wgVnCOR
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U pcgdb_owner" --health-interval=10s --health-timeout=5s --health-retries=5
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+
+      # Add Keycloak if needed
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Set environment variables
+        run: |
+          echo "DB_URL=${{ secrets.DB_URL }}" >> $GITHUB_ENV
+          # Add other env vars as needed
+
+      - name: Run tests for reader
+        working-directory: ./reader
+        run: |
+          go mod download
+          go test -v ./...
+
+      - name: Run tests for writer
+        working-directory: ./writer
+        run: |
+          go mod download
+          go test -v ./...
+
+      # Optionally add linting, coverage, etc.
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push reader image
+        working-directory: ./reader
+        run: |
+          docker build -t docker.io/arkensa/reader:${{ github.sha }} .
+          docker push docker.io/arkensa/reader:${{ github.sha }}
+
+      - name: Build and push writer image
+        working-directory: ./writer
+        run: |
+          docker build -t docker.io/arkensa/writer:${{ github.sha }} .
+          docker push docker.io/arkensa/writer:${{ github.sha }}
+
+      - name: Build and push log-consumer image
+        working-directory: ./log-consumer
+        run: |
+          docker build -t docker.io/arkensa/log-consumer:${{ github.sha }} .
+          docker push docker.io/arkensa/log-consumer:${{ github.sha }}

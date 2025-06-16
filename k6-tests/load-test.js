@@ -1,14 +1,15 @@
-import {postEndpoint, getByIdEndpoint} from './base.js'
+import {authenticate, postEndpoint, getByIdEndpoint} from './base.js'
 
 export const options = {
     stages: [
-      { duration: '30s', target: 1000 },
-      { duration: '1m', target: 1000 },
-      { duration: '30s', target: 0 }, 
+      { duration: '30s', target: 100 },
+      { duration: '20s', target: 100 },
+      { duration: '10s', target: 0 }, 
     ],
   };
 
   export default function () {
-    postEndpoint();
-    getByIdEndpoint();
+    const bearerToken = authenticate();
+    postEndpoint(bearerToken);
+    getByIdEndpoint(bearerToken);
   }
