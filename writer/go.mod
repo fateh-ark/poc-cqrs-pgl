@@ -3,7 +3,7 @@ module github.com/fateh-ark/writer-cqrs-poc
 go 1.23.0
 
 require (
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/rabbitmq/amqp091-go v1.10.0
