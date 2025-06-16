@@ -3,7 +3,7 @@ module github.com/fateh-ark/reader-cqrs-pgl
 go 1.23.0
 
 require (
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-gonic/gin v1.10.1
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/stretchr/testify v1.9.0
